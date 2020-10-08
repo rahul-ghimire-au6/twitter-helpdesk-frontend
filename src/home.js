@@ -22,7 +22,7 @@ class Home extends Component {
       user_profile_pic:'',
       user_reply:'',
       isreplied:false,
-      disabled:false
+      disabled:false,      
     }
   }
 
@@ -32,8 +32,8 @@ class Home extends Component {
     } = this.props;
     console.log(params.userId);  
     const data159 = async ()=>{
-      let data101 = await this.props.fetch_user_data(params.userId);  
-      // this.props.fetch_user_tweets_from_database(data101.message.jwt_token)
+      let data101 = await this.props.fetch_user_data(params.userId);
+      console.log(data101)
       this.fetchTweets()
     }
     data159()         
@@ -48,8 +48,10 @@ class Home extends Component {
       })
       .then(res=>res.json())
       .then(data=>{
-        if(data.status === "success"){
-          this.props.fetch_user_tweets_from_database(this.props.userData.message.jwt_token)
+        if(data.status === "success"){          
+          setTimeout(()=>{
+            this.props.fetch_user_tweets_from_database(this.props.userData.message.jwt_token)
+          },2000)
           return {'status':'success'}
         }
       }).catch(err=>console.log(err))
@@ -207,6 +209,7 @@ class Home extends Component {
           <div className="home-sub-main-container">
             {/* chat list */}
             <div className='home-friend-container'>
+              <div className='home-friend-container-div'>
               {/* box1 */}
               {/* <div className="friend-info"></div> */}
               {tweetlist}
@@ -217,6 +220,7 @@ class Home extends Component {
               {/* box3 */}
               {/* <div className="friend-info"></div> */}
               {/* end   */}
+              </div>
             </div>
             {/* end */}
             {/* chat div */}
@@ -273,7 +277,7 @@ class Home extends Component {
                           </div>}
                             {/* start of the bottom input type */}
                             {/* start of input type text */}
-                            <div style={{display:'flex',marginLeft:'2em', position:'fixed',top:'40rem'}}>
+                            <div className='attach-reply-container'>
                               <div style={{marginTop:'2em'}}>
                             <img src={this.props.userData===undefined?'':this.props.userData.message.twitter_profilePic_mini} alt='profile' className='friend-info-img' />
                             </div>                       
