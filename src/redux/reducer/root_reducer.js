@@ -2,7 +2,7 @@ import * as action_type from '../action/action_type'
 
 const initialState = {
     userData:undefined,
-    userTweetsData:[],
+    userTweetsData:undefined,
     tweetsData:[]
 }
 

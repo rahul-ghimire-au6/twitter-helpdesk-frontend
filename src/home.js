@@ -22,7 +22,10 @@ class Home extends Component {
       user_profile_pic:'',
       user_reply:'',
       isreplied:false,
-      disabled:false,      
+      disabled:false,
+      replies:{status:'',message:[]},
+      replydata:[],
+      temp:''      
     }
   }
 
@@ -30,13 +33,12 @@ class Home extends Component {
     const {
       match: { params },
     } = this.props;
-    console.log(params.userId);  
+    // console.log(params.userId);  
     const data159 = async ()=>{
-      let data101 = await this.props.fetch_user_data(params.userId);
-      console.log(data101)
+      await this.props.fetch_user_data(params.userId);     
       this.fetchTweets()
     }
-    data159()         
+    data159()    
   }
 
   fetchTweets=()=>{   
@@ -49,9 +51,7 @@ class Home extends Component {
       .then(res=>res.json())
       .then(data=>{
         if(data.status === "success"){          
-          setTimeout(()=>{
-            this.props.fetch_user_tweets_from_database(this.props.userData.message.jwt_token)
-          },2000)
+         this.props.fetch_user_tweets_from_database(this.props.userData.message.jwt_token)
           return {'status':'success'}
         }
       }).catch(err=>console.log(err))
@@ -62,22 +62,53 @@ class Home extends Component {
     // }
   }
 
-  setTweetData=(e)=>{
+  setTweetData= async (e)=>{
     e.preventDefault()
     let selectedId=e.target.id
     let selectedTweet = this.props.tweetsData.filter(element=>element._id===selectedId)
     let image = selectedTweet[0].sender_profile_pic
-    let newImage = image.replace(/_normal.jpg$/gm,'.jpg')   
-      this.setState({
-        sender_tweet_id:selectedTweet[0].tweet_id,
-        tweet:selectedTweet[0].Tweet,
-        sender:selectedTweet[0].sender,
-        sender_profile_pic_mini:selectedTweet[0].sender_profile_pic,
-        sender_profile_pic:newImage,
-        user_profile_pic:this.props.userData.message.twitter_profilePic_mini,
-        isreplied:false,
-        disabled:false
-      })  
+    let newImage = image.replace(/_normal.jpg$/gm,'.jpg')  
+    // console.log(selectedTweet[0].tweet_id)
+    fetch(`http://localhost:3000/fetch_tweets_reply_from_db_params/${selectedTweet[0].tweet_id}`,{
+      headers: {
+        'Cache-Control': 'no-store'
+      }
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        // console.log(data)
+        if(data.message.length===0){
+          this.setState({
+            replies:data,
+            replydata:[],            
+            sender_tweet_id:selectedTweet[0].tweet_id,
+            tweet:selectedTweet[0].Tweet,
+            sender:selectedTweet[0].sender,
+            sender_profile_pic_mini:selectedTweet[0].sender_profile_pic,
+            sender_profile_pic:newImage,
+            user_profile_pic:this.props.userData.message.twitter_profilePic_mini,
+            isreplied:false,
+            disabled:false,
+            temp:''
+          })
+        }else{
+          this.setState({
+            replies:data,
+            replydata:data.message[0].replies,
+            sender_tweet_id:selectedTweet[0].tweet_id,
+            tweet:selectedTweet[0].Tweet,
+            sender:selectedTweet[0].sender,
+            sender_profile_pic_mini:selectedTweet[0].sender_profile_pic,
+            sender_profile_pic:newImage,
+            user_profile_pic:this.props.userData.message.twitter_profilePic_mini,
+            isreplied:false,
+            disabled:false,
+            temp:''
+          })}
+        }
+      )
+    .catch(err=>console.log(err))  
+  
   }
 
   closeTweet=(e)=>{
@@ -89,7 +120,10 @@ class Home extends Component {
         sender_profile_pic_mini:'',
         sender_profile_pic:'',
         isreplied:false,
-        disabled:false
+        disabled:false,
+        replies:{status:'',message:[]},
+        replydata:[],
+        temp:''
     })
   }
 
@@ -102,17 +136,16 @@ class Home extends Component {
 
   handleSubmit=(e)=>{   
     if (e.key === 'Enter') {
-      console.log(this.state.user_reply)  
+      // console.log(this.state.user_reply)       
       // do the fetch thing here
-      if(this.state.user_reply.length<131 && this.state.sender!==''){
+      if(this.state.user_reply.length<131 && this.state.sender!==''){         
         let replybody={
           sender:this.state.sender,
           sender_tweet_id:this.state.sender_tweet_id,
-          user_reply:this.state.user_reply
+          user_reply:this.state.user_reply,
+          user_pic:this.props.userData.message.twitter_profilePic_mini
         }
-        let json_replybody=JSON.stringify(replybody)
-        // console.log(json_replybody)
-        console.log(json_replybody)
+        let json_replybody=JSON.stringify(replybody)        
         fetch('http://localhost:3000/reply_to_tweets',{
           method: 'POST',
           headers: {
@@ -124,13 +157,20 @@ class Home extends Component {
           body: json_replybody
         })
         .then(response=>response.json())
-        .then(data=>console.log(data))
+        .then(data=>{
+          // console.log(data)
+          this.setState({
+            temp:this.state.user_reply,
+            user_reply:'',
+            isreplied:true
+          })
+        })
         .catch(err=>console.log(err))
       }
       else{
         alert("error: reply should be less then 131 characters excluding sender's name or sender not selected please click on tweets to your left hand side")
       }
-      this.setState({isreplied:true,disabled:true}) 
+  
       
     }
   }
@@ -154,6 +194,18 @@ class Home extends Component {
               </div>
     ))
 
+    let reply = this.state.replydata.map(element=>(
+      <div key={element._id}>
+        <div style={{display:'flex'}}>
+        <div>
+        <img src={element.reply_sender_pic} alt='user_profile_pic' className='friend-info-img' style={{marginTop:'1em'}}/>
+        </div>
+        <div>
+        <p style={{paddingLeft:'0.5em',fontWeight:'500',marginBottom:'0em',paddingBottom:'0em'}}>{element.reply_txt}</p>
+        </div>
+        </div>
+        </div>
+    ))
     return (
       <Fragment>
         <LeftNav
@@ -212,7 +264,7 @@ class Home extends Component {
               <div className='home-friend-container-div'>
               {/* box1 */}
               {/* <div className="friend-info"></div> */}
-              {tweetlist}
+              {this.props.userTweetsData===undefined?<div className="loader">Loading...</div>:tweetlist}
               {/* end */}
               {/* box2 */}
               {/* <div className="friend-info"></div> */}
@@ -261,13 +313,20 @@ class Home extends Component {
                         </div>                                                                    
                         </div>
                         {/* start of reply*/}
+                        {this.state.replies.status===''?<div className="loader">Loading...</div>:reply}
                         {this.state.isreplied===false?'':<div>
                         <div style={{display:'flex'}}>
                             <div>
+                              {/* <img src={this.state.user_profile_pic} alt='user_profile_pic' className='friend-info-img' style={{marginTop:'1em'}}/> */}
+                              {this.state.isreplied===false?'':
                               <img src={this.state.user_profile_pic} alt='user_profile_pic' className='friend-info-img' style={{marginTop:'1em'}}/>
+                              }
                               </div>
-                              <div>
-                                <p style={{paddingLeft:'0.5em',fontWeight:'500',marginBottom:'0em',paddingBottom:'0em'}}>@{this.state.sender}<span style={{paddingLeft:'0.3em'}}>{this.state.user_reply}</span></p>
+                              <div>                                
+                                {/* <p style={{paddingLeft:'0.5em',fontWeight:'500',marginBottom:'0em',paddingBottom:'0em'}}>@{this.state.sender}<span style={{paddingLeft:'0.3em'}}>{this.state.temp}</span></p> */}
+                                {this.state.isreplied===false?'':
+                              <p style={{paddingLeft:'0.5em',fontWeight:'500',marginBottom:'0em',paddingBottom:'0em'}}>@{this.state.sender}<span style={{paddingLeft:'0.3em'}}>{this.state.temp}</span></p>
+                              }
                                 </div>
                           </div>
                           </div>}                                                 
@@ -290,8 +349,7 @@ class Home extends Component {
                               classnamevalue="attach_reply"
                               inputvalue={this.state.user_reply}
                               onchangevalue={this.handleOnChange}
-                              onKeyPressvalue={this.handleSubmit}
-                              disabledvalue={this.state.disabled}
+                              onKeyPressvalue={this.handleSubmit}                              
                                 />
                               </div>
                               </div>
@@ -382,8 +440,8 @@ const mapStateToProps = (state) => {
   return {
     userData: state.userData,
     userTweetsData:state.userTweetsData,
-    tweetsData:state.tweetsData
+    tweetsData:state.tweetsData,
   };
 };
 
-export default connect(mapStateToProps, { fetch_user_data,fetch_user_tweets_from_database })(Home);
+export default connect(mapStateToProps, { fetch_user_data,fetch_user_tweets_from_database})(Home);
